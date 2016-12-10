@@ -1,5 +1,4 @@
 lume = require "lume"
-serialize = require 'ser'
 
 
 
@@ -76,17 +75,6 @@ function love.update(dt)
     prevY = love.mouse:getY()
   end
 
-  if love.keyboard.isDown("o") then
-    --str = Tserial.pack(objects, true, true)
-    --print(str)
-    love.filesystem.write("level.txt", serialize(objects))
-    --table.save(objects, "level.txt")
-  end
-  if love.keyboard.isDown("l") then
-    --objects = table.load("level.txt")
-    objects = love.filesystem.load("level.txt")()
-  end
-
 end
  
 function love.mousereleased( x, y, button )
@@ -99,8 +87,7 @@ function love.mousereleased( x, y, button )
   tmpBlock.g = 0
   tmpBlock.b = 5
   tmpBlock.isBlock = true
-  print(os.time())
-  objects[os.time()] = tmpBlock
+  objects.insert(tmpBloc,1)
 end
 
 function love.draw()
@@ -118,11 +105,11 @@ function love.draw()
   end
   love.graphics.circle("fill", objects.ball.body:getX(), objects.ball.body:getY(), objects.ball.shape:getRadius())
  
-  for key,value in pairs(objects) do 
-    print(key,value)
-    if value.isBlock == true then
-      love.graphics.setColor(value.r, value.g, value.b)
-      love.graphics.polygon("fill", value.body:getWorldPoints(value.shape:getPoints()))
+  for i=1,objects.getn() do
+    tmpObj = objects[i]
+    if tmpObj.isBlock then
+      love.graphics.setColor(tmpObj.r, tmpObj.g, tmpObj.b)
+      love.graphics.polygon("fill", tmpObj.body:getWorldPoints(tmpObj.shape:getPoints()))
     end
   end
   --love.graphics.setColor(50, 50, 50) -- set the drawing color to grey for the blocks
