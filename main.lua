@@ -52,6 +52,7 @@ function constructTele(block,name)
   objects[name].fixture = love.physics.newFixture(objects[name].body, objects[name].shape, 5) -- A higher density gives it more mass.
   objects[name].isTele = true
   objects[name].switchNum = block.switchNum
+  objects[name].vanish = teleVanish -- TODO!!
   objects[name].fixture:setUserData("t" .. tostring(block.switchNum))
   objects[name].fixture:setSensor(true)
   objects[name].r = teleColors[block.switchNum].r --block.r
@@ -69,6 +70,19 @@ function updateTeleBlockMasks()
         value.fixture:setMask(1)
       end
       --print(value.fixture:getMask())
+    end
+  end
+end
+
+function vanishTeleporters(num)
+  blocks = {}
+  for key,value in pairs(objects) do 
+    print(key,value)
+    if ((value.isTele == true) and (value.switchNum == num)) then
+        -- remove from world
+        value.body:destroy()
+        -- remove from objects
+        objects[key] = nil
     end
   end
 end
@@ -94,9 +108,12 @@ function love.load()
   world = love.physics.newWorld(0, 9.81*64, true) --create a world for the bodies to exist in with horizontal gravity of 0 and vertical gravity of 9.81
   world:setCallbacks(beginContact, endContact, preSolve, postSolve) -- collision callbacks
 
-  music = love.audio.newSource("testsound.mp3")
-  music:play() -- change whatever... no plan TODO
-  music:setPitch(0.4)
+  musicPiece1 = love.audio.newSource("LudumDare37Kitschig1.ogg")
+  musicPiece2 = love.audio.newSource("LudumDare37Kitschig2Loop.ogg")
+  musicPiece1:setLooping(false)
+  musicPiece2:setLooping(true)
+  --musicPiece1:setPitch(0.4)
+  musicPiece1:play() -- change whatever... no plan TODO
 
   prevX = 0
   prevY = 0
@@ -108,6 +125,8 @@ function love.load()
   teleCurrent = 1
   teleX = -1
   teleY = -1
+
+  teleVanish = false --should current teleporter pair vanish when used?
 
   -- teleporter colors
   teleColors = {}
@@ -135,6 +154,7 @@ function love.load()
     switchStates[i] = false
     --love.keyboard.setKeyRepeat( enable )
   end
+  switchStates[3] = true
 
   objects = {} -- table to hold all our physical objects
   blocks = {} -- table for static blocks to load/save ONLY SKELETON DATA
@@ -213,9 +233,18 @@ function love.update(dt)
     print(tostring(switchStates[teleCurrent]))
     print(tostring(teleCurrent))
     updateTeleBlockMasks()
+
+    -- CHECK IF VANISH
+    if teleCurrent == 3 then -- TODO
+      vanishTeleporters(teleCurrent)
+    end
   end
   teleTimeout = lume.clamp(teleTimeout-dt,0,10)
   --print(tostring(teleTimeout))
+
+  if(musicPiece1:isStopped()) then
+    musicPiece2:play()
+  end
 
   world:update(dt) --this puts the world into motion
  
@@ -319,6 +348,11 @@ function love.keyreleased(key)
     print(id)
     blocks[id] = tmpBlock
     constructTeleBlock(tmpBlock, id)
+  end
+  if key == "0" then
+    teleVanish = not teleVanish
+    print("TELEVANISH:")
+    print(teleVanish)
   end
 end
  
