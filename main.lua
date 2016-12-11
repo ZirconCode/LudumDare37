@@ -1,7 +1,50 @@
 lume = require "lume"
 --serialize = require 'ser'
+--require "Tserial"
+serialize = require 'ser'
 
 
+function construct()
+  -- Construct Objects From Blocks
+  i = 1
+  for key,value in pairs(blocks) do 
+    print(key,value)
+    if value.isBlock == true then
+        constructBlock(value,i)
+        i = i+1
+    end
+  end
+  ---------------------------------
+end
+
+function constructBlock(block,name)
+  objects[name] = {}
+  objects[name].body = love.physics.newBody(world, block.x, block.y) --, "dynamic")
+  objects[name].shape = love.physics.newRectangleShape(0, 0, block.w, block.h)
+  objects[name].fixture = love.physics.newFixture(objects[name].body, objects[name].shape, 5) -- A higher density gives it more mass.
+  objects[name].isBlock = true
+  objects[name].r = block.r
+  objects[name].g = block.g
+  objects[name].b = block.b
+end
+
+function clear()
+  -- clear all isBlocks from World
+  blocks = {}
+  -- remove all blocks from objects!!
+  -- remove all from physics world
+  i = 1
+  for key,value in pairs(objects) do 
+    print(key,value)
+    if value.isBlock == true then
+        -- remove from world
+        value.body:destroy()
+        -- remove from objects
+        objects[key] = nil
+        i = i+1
+    end
+  end
+end
 
 function love.load()
   love.physics.setMeter(64) --the height of a meter our worlds will be 64px
@@ -18,10 +61,14 @@ function love.load()
   canJump = true
   footCount = 0;
 
+  cameraY = 0;
+
   picSmiley = love.graphics.newImage("smiley.png")
   rotation = 0;
 
   objects = {} -- table to hold all our physical objects
+  blocks = {} -- table for static blocks to load/save ONLY SKELETON DATA
+  -- x,y,w,h,r,g,b
  
   --let's create the ground
   objects.ground = {}
@@ -39,7 +86,9 @@ function love.load()
   objects.ball.body = love.physics.newBody(world, 650/2, 650/2, "dynamic") --place the body in the center of the world and make it dynamic, so it can move around
   objects.ball.shape = love.physics.newCircleShape(20) --the ball's shape has a radius of 20
   objects.ball.fixture = love.physics.newFixture(objects.ball.body, objects.ball.shape, 3) -- Attach fixture to body and give it a density of 1.
-  objects.ball.body:setFixedRotation( true )  
+  objects.ball.fixture:setFriction(0.7) -- TODO 
+  objects.ball.body:setFixedRotation( true ) 
+
   -- TODO understand this properly...
   objects.ball.footShape = love.physics.newRectangleShape( 0, 33, 20,2, 0 )
   objects.ball.footFixture = love.physics.newFixture(objects.ball.body,objects.ball.footShape,1)
@@ -53,34 +102,43 @@ function love.load()
 
   -- structure of block
 
-  objects.block1 = {}
-  objects.block1.body = love.physics.newBody(world, 200, 550, "dynamic")
-  objects.block1.shape = love.physics.newRectangleShape(0, 0, 50, 100)
-  objects.block1.fixture = love.physics.newFixture(objects.block1.body, objects.block1.shape, 5) -- A higher density gives it more mass.
-  objects.block1.r = 255
-  objects.block1.g = 0
-  objects.block1.b = 50
-  objects.block1.isBlock = true
+  -- for now, always FIXED
+  blocks.block1 = {}
+  blocks.block1.x = 200
+  blocks.block1.y = 550
+  blocks.block1.w = 50
+  blocks.block1.h = 100
+  blocks.block1.r = 255
+  blocks.block1.g = 0
+  blocks.block1.b = 50
+  blocks.block1.isBlock = true
 
-  objects.block2 = {}
-  objects.block2.body = love.physics.newBody(world, 400, 300, "dynamic")
-  objects.block2.shape = love.physics.newRectangleShape(0, 0, 100, 50)
-  objects.block2.fixture = love.physics.newFixture(objects.block2.body, objects.block2.shape, 2)
-  objects.block2.r = 50
-  objects.block2.g = 0
-  objects.block2.b = 250
-  objects.block2.isBlock = true
+  blocks.block2 = {}
+  blocks.block2.x = 400
+  blocks.block2.y = 300
+  blocks.block2.w = 100
+  blocks.block2.h = 50
+  blocks.block2.r = 50
+  blocks.block2.g = 0
+  blocks.block2.b = 250
+  blocks.block2.isBlock = true
+
+  construct()
 
   --initial graphics setup
   love.graphics.setBackgroundColor(104, 136, 248) --set the background color to a nice blue
   love.window.setMode(650, 650) --set the window dimensions to 650 by 650
 end
  
- 
 function love.update(dt)
   world:update(dt) --this puts the world into motion
  
   rotation = rotation + dt*100
+
+  -- Adapt Camera?
+  -- TODO some clever lume cameraY
+  cameraY = lume.lerp(cameraY,-objects.ball.body:getY()+love.graphics.getHeight()-200,1) -- TODO
+  -- good enough
 
   --xVel, yVel = objects.ball.body:getLinearVelocity()
   --music:setPitch(lume.clamp(lume.round((xVel/100),0.1)),0,1)
@@ -107,18 +165,25 @@ function love.update(dt)
 
   if love.keyboard.isDown("g") then
     prevX = love.mouse:getX()
-    prevY = love.mouse:getY()
+    prevY = love.mouse:getY()-cameraY
   end
 
+  if love.keyboard.isDown("p") then
+    clear()
+  end
+
+  -- load/save BLOCKS
   if love.keyboard.isDown("o") then
-    --str = Tserial.pack(objects, true, true)
-    --print(str)
-    love.filesystem.write("level.txt", serialize(objects))
-    --table.save(objects, "level.txt")
+    str = serialize(blocks)
+    print(str)
+    love.filesystem.write("level.txt", str)
   end
   if love.keyboard.isDown("l") then
-    --objects = table.load("level.txt")
-    objects = love.filesystem.load("level.txt")()
+    clear()
+    blocks = love.filesystem.load("level.txt")() --str =
+    print(blocks)
+    --blocks = Tserial.unpack(str, true)
+    construct() -- DONT LOAD REPEATEDLY, CLEAR FIRST -> GOOD THINK IT WORKS?
   end
 
 end
@@ -126,18 +191,25 @@ end
 function love.mousereleased( x, y, button )
   -- create block set with starting point at g
   tmpBlock = {}
-  tmpBlock.body = love.physics.newBody(world, math.min(x,prevX)+(math.abs(x-prevX)/2), math.min(y,prevY)+(math.abs(y-prevY)/2)) --, "dynamic")
-  tmpBlock.shape = love.physics.newRectangleShape(0, 0, math.abs(x-prevX), math.abs(y-prevY))
-  tmpBlock.fixture = love.physics.newFixture(tmpBlock.body, tmpBlock.shape, 5)
+  tmpBlock.x = math.min(x,prevX)+(math.abs(x-prevX)/2)
+  tmpBlock.y = math.min(-cameraY+y,prevY)+(math.abs(-cameraY+y-prevY)/2)
+  tmpBlock.w = math.abs(x-prevX)
+  tmpBlock.h = math.abs(-cameraY+y-prevY)
   tmpBlock.r = 255
   tmpBlock.g = 0
   tmpBlock.b = 5
   tmpBlock.isBlock = true
-  print(os.time())
-  objects[os.time()] = tmpBlock
+  id = os.time()  -- oh dear TODO... its in sec.
+  print(id)
+  blocks[id] = tmpBlock
+  constructBlock(tmpBlock, id)
 end
 
 function love.draw()
+
+  -- CAMERA?
+  love.graphics.translate( 0, cameraY ) -- TODO
+
   love.graphics.setColor(72, 160, 14) -- set the drawing color to green for the ground
   love.graphics.polygon("fill", objects.ground.body:getWorldPoints(objects.ground.shape:getPoints())) -- draw a "filled in" polygon using the ground's coordinates
 
@@ -145,11 +217,11 @@ function love.draw()
   x = objects.ball.body:getX()
   y = objects.ball.body:getY()
   dist = lume.distance(x,y,0,0,1)
-  if (dist < 500000) then
+  --if (dist < 500000) then
       love.graphics.setColor(0,255,0)
-    elseif true then
-      love.graphics.setColor(193, 47, 14) --set the drawing color to red for the ball
-  end
+    --elseif true then
+      --love.graphics.setColor(193, 47, 14) --set the drawing color to red for the ball
+  --end
   --love.graphics.circle("fill", objects.ball.body:getX(), objects.ball.body:getY(), objects.ball.shape:getRadius())
   --love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY())
   love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY(), math.rad(rotation), 1, 1, 40 / 2, 40 / 2)
