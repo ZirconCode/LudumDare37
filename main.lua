@@ -190,7 +190,7 @@ function love.load()
   --let's create the ground
   objects.ground = {}
   objects.ground.body = love.physics.newBody(world, 650/2, 650-50/2) --remember, the shape (the rectangle we create next) anchors to the body from its center, so we have to move it to (650/2, 650-50/2)
-  objects.ground.shape = love.physics.newRectangleShape(650, 50) --make a rectangle with a width of 650 and a height of 50
+  objects.ground.shape = love.physics.newRectangleShape(200, 50) --make a rectangle with a width of 650 and a height of 50
   objects.ground.fixture = love.physics.newFixture(objects.ground.body, objects.ground.shape); --attach shape to body
 
   -- TODO create walls on all four sides, topdown? nogravity but rest.?
@@ -242,11 +242,13 @@ function love.load()
   blocks.block2.isBlock = true
   --]]
 
+  -- LOAD FROM theroomlevel.txt
+  -- blocks = require 'level' --TODO THIS WORKS NICE
   construct()
   updateTeleBlockMasks()
 
   --initial graphics setup
-  love.graphics.setBackgroundColor(104, 136, 248) --set the background color to a nice blue
+  love.graphics.setBackgroundColor(20, 5, 0) --set the background color to a nice blue
   love.window.setMode(650, 650) --set the window dimensions to 650 by 650
 end
  
@@ -255,7 +257,7 @@ function love.update(dt)
   if(delX ~= -1 and delY ~= -1) then
         deleteObjectsAt(delX,delY)
         delX = -1
-        delY = -1 -- haha oh dear
+        delY = -1 -- haha oh dear TODO
   end
 
   if(teleTimeout == 0 and teleX > 0 and teleY > 0) then
