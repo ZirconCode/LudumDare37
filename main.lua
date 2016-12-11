@@ -30,6 +30,7 @@ function constructBlock(block,name)
   objects[name].r = 50 --block.r --TODO
   objects[name].g = 50 --block.g
   objects[name].b = 50 --block.b
+  objects[name].body:setUserData(name)
 end
 
 function constructTeleBlock(block,name)
@@ -43,6 +44,7 @@ function constructTeleBlock(block,name)
   objects[name].r = teleColors[block.switchNum].r --block.r
   objects[name].g = teleColors[block.switchNum].g --block.g
   objects[name].b = teleColors[block.switchNum].b --block.b
+  objects[name].body:setUserData(name)
 end
 
 function constructTele(block,name)
@@ -58,6 +60,7 @@ function constructTele(block,name)
   objects[name].r = teleColors[block.switchNum].r --block.r
   objects[name].g = teleColors[block.switchNum].g --block.g
   objects[name].b = teleColors[block.switchNum].b --block.b
+  objects[name].body:setUserData(name)
 end
 
 function updateTeleBlockMasks()
@@ -70,6 +73,27 @@ function updateTeleBlockMasks()
         value.fixture:setMask(1)
       end
       --print(value.fixture:getMask())
+    end
+  end
+end
+
+function deleteObjectsAt(x,y)
+  for key,value in pairs(objects) do 
+    print(x)
+    print(y)
+    shape = value.shape
+    tx, ty = value.body:getPosition()
+    isInside = shape:testPoint(tx,ty,0,x,y)
+    if isInside and (value.isTele or value.isBlock or value.isTeleBlock) then
+      -- remove from world
+        -- remove from objects
+        -- remove from BLOCKS? HOW? ------------___TODODOOODDO
+        id = objects[key].body:getUserData()
+                value.body:destroy()
+
+        objects[key] = nil
+        blocks[id] = nil
+        print("INSIDE")
     end
   end
 end
@@ -125,6 +149,9 @@ function love.load()
   teleCurrent = 1
   teleX = -1
   teleY = -1
+
+  delX = -1
+  delY = -1
 
   teleVanish = false --should current teleporter pair vanish when used?
 
@@ -192,7 +219,8 @@ function love.load()
 
   -- structure of block
 
-  -- for now, always FIXED
+  -- for now, always FIXE
+  --[[
   blocks.block1 = {}
   blocks.block1.x = 200
   blocks.block1.y = 550
@@ -212,6 +240,7 @@ function love.load()
   blocks.block2.g = 0
   blocks.block2.b = 250
   blocks.block2.isBlock = true
+  --]]
 
   construct()
   updateTeleBlockMasks()
@@ -223,6 +252,12 @@ end
  
 function love.update(dt)
   -- teleport?
+  if(delX ~= -1 and delY ~= -1) then
+        deleteObjectsAt(delX,delY)
+        delX = -1
+        delY = -1 -- haha oh dear
+  end
+
   if(teleTimeout == 0 and teleX > 0 and teleY > 0) then
     objects.ball.body:setPosition(teleX, teleY-50)
     objects.ball.body:setLinearVelocity(0, -50)
@@ -315,6 +350,10 @@ function love.update(dt)
 end
 
 function love.keyreleased(key)
+  if key == "r" then
+    delX = love.mouse:getX()
+    delY = love.mouse:getY()-cameraY
+  end
   if key == "t" then -- TODO still repeats?
     -- place teleporter
     tmpBlock = {}
