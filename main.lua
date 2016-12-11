@@ -10,9 +10,13 @@ function construct()
   for key,value in pairs(blocks) do 
     print(key,value)
     if value.isBlock == true then
-        constructBlock(value,i)
-        i = i+1
+      constructBlock(value,i)
+    elseif value.isTele == true then
+      constructTele(value,i)
+    elseif value.isTeleBlock == true then
+      constructTeleBlock(value,i)
     end
+    i = i+1
   end
   ---------------------------------
 end
@@ -23,9 +27,50 @@ function constructBlock(block,name)
   objects[name].shape = love.physics.newRectangleShape(0, 0, block.w, block.h)
   objects[name].fixture = love.physics.newFixture(objects[name].body, objects[name].shape, 5) -- A higher density gives it more mass.
   objects[name].isBlock = true
-  objects[name].r = block.r
-  objects[name].g = block.g
-  objects[name].b = block.b
+  objects[name].r = 50 --block.r --TODO
+  objects[name].g = 50 --block.g
+  objects[name].b = 50 --block.b
+end
+
+function constructTeleBlock(block,name)
+  objects[name] = {}
+  objects[name].body = love.physics.newBody(world, block.x, block.y) --, "dynamic")
+  objects[name].shape = love.physics.newRectangleShape(0, 0, block.w, block.h)
+  objects[name].fixture = love.physics.newFixture(objects[name].body, objects[name].shape, 5) -- A higher density gives it more mass.
+  objects[name].isTeleBlock = true
+  objects[name].switchNum = block.switchNum
+  objects[name].fixture:setUserData("tb" .. tostring(block.switchNum))
+  objects[name].r = teleColors[block.switchNum].r --block.r
+  objects[name].g = teleColors[block.switchNum].g --block.g
+  objects[name].b = teleColors[block.switchNum].b --block.b
+end
+
+function constructTele(block,name)
+  objects[name] = {}
+  objects[name].body = love.physics.newBody(world, block.x, block.y) --, "dynamic")
+  objects[name].shape = love.physics.newRectangleShape(0, 0, block.w, block.h)
+  objects[name].fixture = love.physics.newFixture(objects[name].body, objects[name].shape, 5) -- A higher density gives it more mass.
+  objects[name].isTele = true
+  objects[name].switchNum = block.switchNum
+  objects[name].fixture:setUserData("t" .. tostring(block.switchNum))
+  objects[name].fixture:setSensor(true)
+  objects[name].r = teleColors[block.switchNum].r --block.r
+  objects[name].g = teleColors[block.switchNum].g --block.g
+  objects[name].b = teleColors[block.switchNum].b --block.b
+end
+
+function updateTeleBlockMasks()
+  -- TODO
+  for key,value in pairs(objects) do 
+    if value.isTeleBlock == true then
+      if(switchStates[value.switchNum] == true) then
+        value.fixture:setMask(2) -- MASK 2 = CANT TOUCH THIS
+      elseif true then
+        value.fixture:setMask(1)
+      end
+      --print(value.fixture:getMask())
+    end
+  end
 end
 
 function clear()
@@ -33,15 +78,13 @@ function clear()
   blocks = {}
   -- remove all blocks from objects!!
   -- remove all from physics world
-  i = 1
   for key,value in pairs(objects) do 
     print(key,value)
-    if value.isBlock == true then
+    if ((value.isBlock == true) or (value.isTele == true) or (value.isTeleBlock == true)) then
         -- remove from world
         value.body:destroy()
         -- remove from objects
         objects[key] = nil
-        i = i+1
     end
   end
 end
@@ -59,12 +102,39 @@ function love.load()
   prevY = 0
   started = false
   canJump = true
-  footCount = 0;
+  footCount = 0
 
-  cameraY = 0;
+  teleTimeout = 0
+  teleCurrent = 1
+  teleX = -1
+  teleY = -1
+
+  -- teleporter colors
+  teleColors = {}
+  teleColors[1] = {}
+  teleColors[1].r = 255
+  teleColors[1].g = 0
+  teleColors[1].b = 0
+  teleColors[2] = {}
+  teleColors[2].r = 0
+  teleColors[2].g = 255
+  teleColors[2].b = 0
+  teleColors[3] = {}
+  teleColors[3].r = 0
+  teleColors[3].g = 0
+  teleColors[3].b = 255
+
+  cameraY = 0
 
   picSmiley = love.graphics.newImage("smiley.png")
-  rotation = 0;
+  rotation = 0
+
+  editSwitch = 1
+  switchStates = {}
+  for i = 1,9 do
+    switchStates[i] = false
+    --love.keyboard.setKeyRepeat( enable )
+  end
 
   objects = {} -- table to hold all our physical objects
   blocks = {} -- table for static blocks to load/save ONLY SKELETON DATA
@@ -124,6 +194,7 @@ function love.load()
   blocks.block2.isBlock = true
 
   construct()
+  updateTeleBlockMasks()
 
   --initial graphics setup
   love.graphics.setBackgroundColor(104, 136, 248) --set the background color to a nice blue
@@ -131,6 +202,21 @@ function love.load()
 end
  
 function love.update(dt)
+  -- teleport?
+  if(teleTimeout == 0 and teleX > 0 and teleY > 0) then
+    objects.ball.body:setPosition(teleX, teleY-50)
+    objects.ball.body:setLinearVelocity(0, -50)
+    teleX = -1
+    teleY = -1
+    teleTimeout = 2.0
+    switchStates[teleCurrent] = not switchStates[teleCurrent]--toogle
+    print(tostring(switchStates[teleCurrent]))
+    print(tostring(teleCurrent))
+    updateTeleBlockMasks()
+  end
+  teleTimeout = lume.clamp(teleTimeout-dt,0,10)
+  --print(tostring(teleTimeout))
+
   world:update(dt) --this puts the world into motion
  
   rotation = rotation + dt*100
@@ -172,6 +258,16 @@ function love.update(dt)
     clear()
   end
 
+  for i=1,9 do
+    if love.keyboard.isDown(tostring(i)) then
+      print(tostring(i))
+      editSwitch = i
+    end
+  end
+
+
+  
+
   -- load/save BLOCKS
   if love.keyboard.isDown("o") then
     str = serialize(blocks)
@@ -184,8 +280,46 @@ function love.update(dt)
     print(blocks)
     --blocks = Tserial.unpack(str, true)
     construct() -- DONT LOAD REPEATEDLY, CLEAR FIRST -> GOOD THINK IT WORKS?
+    updateTeleBlockMasks()
   end
 
+end
+
+function love.keyreleased(key)
+  if key == "t" then -- TODO still repeats?
+    -- place teleporter
+    tmpBlock = {}
+    tmpBlock.x = love.mouse:getX()
+    tmpBlock.y = love.mouse:getY()-cameraY
+    tmpBlock.w = 50
+    tmpBlock.h = 20
+    tmpBlock.r = 255
+    tmpBlock.g = 0
+    tmpBlock.b = 255
+    tmpBlock.isTele = true
+    tmpBlock.switchNum = editSwitch
+    id = os.time()  -- oh dear TODO... its in sec.
+    print(id)
+    blocks[id] = tmpBlock
+    constructTele(tmpBlock, id)
+  end
+  if key == "y" then
+    -- construct teleblock
+    tmpBlock = {}
+    tmpBlock.x = math.min(love.mouse:getX(),prevX)+(math.abs(love.mouse:getX()-prevX)/2)
+    tmpBlock.y = math.min(-cameraY+love.mouse:getY(),prevY)+(math.abs(-cameraY+love.mouse:getY()-prevY)/2)
+    tmpBlock.w = math.abs(love.mouse:getX()-prevX)
+    tmpBlock.h = math.abs(-cameraY+love.mouse:getY()-prevY)
+    tmpBlock.r = 255
+    tmpBlock.g = 0
+    tmpBlock.b = 255
+    tmpBlock.isTeleBlock = true
+    tmpBlock.switchNum = editSwitch
+    id = os.time()  -- oh dear TODO... its in sec.
+    print(id)
+    blocks[id] = tmpBlock
+    constructTeleBlock(tmpBlock, id)
+  end
 end
  
 function love.mousereleased( x, y, button )
@@ -236,6 +370,20 @@ function love.draw()
       love.graphics.setColor(value.r, value.g, value.b)
       love.graphics.polygon("fill", value.body:getWorldPoints(value.shape:getPoints()))
     end
+    if value.isTele == true then
+      love.graphics.setColor(value.r, value.g, value.b)
+      love.graphics.polygon("fill", value.body:getWorldPoints(value.shape:getPoints()))
+    end
+    if value.isTeleBlock == true then
+      num = value.switchNum
+      if(switchStates[num] == true) then
+        love.graphics.setColor(value.r, value.g, value.b)
+        love.graphics.polygon("fill", value.body:getWorldPoints(value.shape:getPoints()))
+      elseif true then
+        love.graphics.setColor(value.r, value.g, value.b)
+        love.graphics.polygon("line", value.body:getWorldPoints(value.shape:getPoints()))
+      end
+    end
   end
   --love.graphics.setColor(50, 50, 50) -- set the drawing color to grey for the blocks
   --love.graphics.polygon("fill", objects.block1.body:getWorldPoints(objects.block1.shape:getPoints()))
@@ -248,12 +396,46 @@ function beginContact(a, b, coll)
     print("begin")
     footCount = footCount+1
   end
+
+  -- teleporters
+  for i=1,9 do
+    str = "t" .. tostring(i)
+    if a:getUserData() == str or b:getUserData() == str then
+      -- current teleporter
+      if a:getUserData() == str then
+        collFixt = a
+      elseif true then
+        collFixt = b
+      end
+
+      -- find pair tele
+      for key,value in pairs(objects) do 
+        if ( ((value.isTele == true) and (value.switchNum == i)) and (value.fixture ~= collFixt) ) then
+          -- teleport to that other teleporter
+          teleX,teleY = value.body:getWorldPoints(value.body:getLocalCenter())
+          teleCurrent = i
+        end
+      end
+
+      print(str)
+    end
+  end
+  
+
 end
  
 function endContact(a, b, coll)
  if a:getUserData() == "foot" or b:getUserData() == "foot" then
     print("end")
     footCount = footCount-1
+  end
+
+  for i=1,9 do
+    str = "t" .. tostring(i)
+    if a:getUserData() == str or b:getUserData() == str then
+      teleX = -1
+      teleY = -1
+    end
   end
 end
  
@@ -264,3 +446,4 @@ end
 function postSolve(a, b, coll, normalimpulse, tangentimpulse)
  
 end
+
