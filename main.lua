@@ -99,14 +99,15 @@ function deleteObjectsAt(x,y)
 end
 
 function vanishTeleporters(num)
-  blocks = {}
+  --blocks = {}
   for key,value in pairs(objects) do 
     print(key,value)
     if ((value.isTele == true) and (value.switchNum == num)) then
         -- remove from world
+        id = objects[key].body:getUserData()
         value.body:destroy()
-        -- remove from objects
         objects[key] = nil
+        blocks[id] = nil
     end
   end
 end
@@ -129,13 +130,17 @@ end
 
 function love.load()
   love.physics.setMeter(64) --the height of a meter our worlds will be 64px
-  world = love.physics.newWorld(0, 9.81*64, true) --create a world for the bodies to exist in with horizontal gravity of 0 and vertical gravity of 9.81
+  world = love.physics.newWorld(0, 1.6*9.81*64, true) --create a world for the bodies to exist in with horizontal gravity of 0 and vertical gravity of 9.81
   world:setCallbacks(beginContact, endContact, preSolve, postSolve) -- collision callbacks
 
   musicPiece1 = love.audio.newSource("LudumDare37Kitschig1.ogg")
   musicPiece2 = love.audio.newSource("LudumDare37Kitschig2Loop.ogg")
+  musicPiece3 = love.audio.newSource("LudumDare37Dark1.ogg")
+  musicPiece4 = love.audio.newSource("LudumDare37Dark2Loop.ogg")
   musicPiece1:setLooping(false)
   musicPiece2:setLooping(true)
+  musicPiece3:setLooping(false)
+  musicPiece4:setLooping(true)
   --musicPiece1:setPitch(0.4)
   musicPiece1:play() -- change whatever... no plan TODO
 
@@ -189,7 +194,7 @@ function love.load()
  
   --let's create the ground
   objects.ground = {}
-  objects.ground.body = love.physics.newBody(world, 650/2, 650-50/2) --remember, the shape (the rectangle we create next) anchors to the body from its center, so we have to move it to (650/2, 650-50/2)
+  objects.ground.body = love.physics.newBody(world, 800/2, 800-50/2) --remember, the shape (the rectangle we create next) anchors to the body from its center, so we have to move it to (650/2, 650-50/2)
   objects.ground.shape = love.physics.newRectangleShape(200, 50) --make a rectangle with a width of 650 and a height of 50
   objects.ground.fixture = love.physics.newFixture(objects.ground.body, objects.ground.shape); --attach shape to body
 
@@ -200,10 +205,10 @@ function love.load()
   objects.ball = {}
   objects.ball.isPlayer = true
   --objects.ball.setUserData 
-  objects.ball.body = love.physics.newBody(world, 650/2, 650/2, "dynamic") --place the body in the center of the world and make it dynamic, so it can move around
+  objects.ball.body = love.physics.newBody(world, 800/2, 800/2, "dynamic") --place the body in the center of the world and make it dynamic, so it can move around
   objects.ball.shape = love.physics.newCircleShape(20) --the ball's shape has a radius of 20
   objects.ball.fixture = love.physics.newFixture(objects.ball.body, objects.ball.shape, 3) -- Attach fixture to body and give it a density of 1.
-  objects.ball.fixture:setFriction(0.7) -- TODO 
+  objects.ball.fixture:setFriction(0.3) -- TODO 
   objects.ball.body:setFixedRotation( true ) 
 
   -- TODO understand this properly...
@@ -249,7 +254,7 @@ function love.load()
 
   --initial graphics setup
   love.graphics.setBackgroundColor(20, 5, 0) --set the background color to a nice blue
-  love.window.setMode(650, 650) --set the window dimensions to 650 by 650
+  love.window.setMode(800, 600) --set the window dimensions to 650 by 650
 end
  
 function love.update(dt)
@@ -285,7 +290,7 @@ function love.update(dt)
 
   world:update(dt) --this puts the world into motion
  
-  rotation = rotation + dt*100
+  --rotation = rotation + dt*300
 
   -- Adapt Camera?
   -- TODO some clever lume cameraY
@@ -352,6 +357,10 @@ function love.update(dt)
 end
 
 function love.keyreleased(key)
+  if key == "c" then
+    objects.ball.body:setPosition(400, 400)
+    objects.ball.body:setLinearVelocity(0, -50)
+  end
   if key == "r" then
     delX = love.mouse:getX()
     delY = love.mouse:getY()-cameraY
@@ -369,6 +378,8 @@ function love.keyreleased(key)
     tmpBlock.isTele = true
     tmpBlock.switchNum = editSwitch
     id = os.time()  -- oh dear TODO... its in sec.
+      id = love.math.random( id, id*1000 )--  this is so good
+
     print(id)
     blocks[id] = tmpBlock
     constructTele(tmpBlock, id)
@@ -386,6 +397,8 @@ function love.keyreleased(key)
     tmpBlock.isTeleBlock = true
     tmpBlock.switchNum = editSwitch
     id = os.time()  -- oh dear TODO... its in sec.
+      id = love.math.random( id, id*1000 )--  this is so good
+
     print(id)
     blocks[id] = tmpBlock
     constructTeleBlock(tmpBlock, id)
@@ -409,6 +422,7 @@ function love.mousereleased( x, y, button )
   tmpBlock.b = 5
   tmpBlock.isBlock = true
   id = os.time()  -- oh dear TODO... its in sec.
+  id = love.math.random( id, id*1000 )--  this is so good
   print(id)
   blocks[id] = tmpBlock
   constructBlock(tmpBlock, id)
