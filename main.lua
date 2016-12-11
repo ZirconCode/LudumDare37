@@ -8,13 +8,14 @@ function construct()
   -- Construct Objects From Blocks
   i = 1
   for key,value in pairs(blocks) do 
+    print("+++++++++++++++++++++++")
     print(key,value)
     if value.isBlock == true then
-      constructBlock(value,i)
+      constructBlock(value,key)
     elseif value.isTele == true then
-      constructTele(value,i)
+      constructTele(value,key)
     elseif value.isTeleBlock == true then
-      constructTeleBlock(value,i)
+      constructTeleBlock(value,key)
     end
     i = i+1
   end
@@ -89,11 +90,17 @@ function deleteObjectsAt(x,y)
         -- remove from objects
         -- remove from BLOCKS? HOW? ------------___TODODOOODDO
         id = objects[key].body:getUserData()
-                value.body:destroy()
+        value.body:destroy()
 
         objects[key] = nil
+        print("ID ////////////////////////////////////////////")
+        print(id)
+        print("BLOCKS")
+        print(blocks)
         blocks[id] = nil
-        print("INSIDE")
+        print("BLOCKS")
+        print(blocks)
+        print("INSIDE /////////////////////////////////////////")
     end
   end
 end
@@ -177,7 +184,7 @@ function love.load()
 
   cameraY = 0
 
-  picSmiley = love.graphics.newImage("smiley.png")
+  picSmiley = love.graphics.newImage("salamander.png")
   rotation = 0
 
   editSwitch = 1
@@ -187,6 +194,8 @@ function love.load()
     --love.keyboard.setKeyRepeat( enable )
   end
   switchStates[3] = true
+  switchStates[2] = true
+  switchStates[1] = true
 
   objects = {} -- table to hold all our physical objects
   blocks = {} -- table for static blocks to load/save ONLY SKELETON DATA
@@ -202,17 +211,18 @@ function love.load()
   -- TODO how to determine collision/touching?
 
   --let's create a ball
+  -- 40 x 25 pixel GECKO TODO
   objects.ball = {}
   objects.ball.isPlayer = true
   --objects.ball.setUserData 
-  objects.ball.body = love.physics.newBody(world, 800/2, 800/2, "dynamic") --place the body in the center of the world and make it dynamic, so it can move around
-  objects.ball.shape = love.physics.newCircleShape(20) --the ball's shape has a radius of 20
+  objects.ball.body = love.physics.newBody(world, 800/2, 800/2+250, "dynamic") --place the body in the center of the world and make it dynamic, so it can move around
+  objects.ball.shape = love.physics.newRectangleShape(40, 25) --the ball's shape has a radius of 20
   objects.ball.fixture = love.physics.newFixture(objects.ball.body, objects.ball.shape, 3) -- Attach fixture to body and give it a density of 1.
   objects.ball.fixture:setFriction(0.3) -- TODO 
   objects.ball.body:setFixedRotation( true ) 
 
   -- TODO understand this properly...
-  objects.ball.footShape = love.physics.newRectangleShape( 0, 33, 20,2, 0 )
+  objects.ball.footShape = love.physics.newRectangleShape( 0, 15, 20,2, 0 ) -- newRectangleShape( 0, 33, 20,2, 0 )
   objects.ball.footFixture = love.physics.newFixture(objects.ball.body,objects.ball.footShape,1)
   objects.ball.footFixture:setUserData("foot")
   objects.ball.footFixture:setSensor(true)
@@ -339,13 +349,19 @@ function love.update(dt)
 
   
 
+
+end
+
+function love.keyreleased(key)
+
+
   -- load/save BLOCKS
-  if love.keyboard.isDown("o") then
+  if key == "o" then
     str = serialize(blocks)
     print(str)
     love.filesystem.write("level.txt", str)
   end
-  if love.keyboard.isDown("l") then
+  if key == "l" then
     clear()
     blocks = love.filesystem.load("level.txt")() --str =
     print(blocks)
@@ -354,11 +370,8 @@ function love.update(dt)
     updateTeleBlockMasks()
   end
 
-end
-
-function love.keyreleased(key)
   if key == "c" then
-    objects.ball.body:setPosition(400, 400)
+    objects.ball.body:setPosition(400, 800/2+250)
     objects.ball.body:setLinearVelocity(0, -50)
   end
   if key == "r" then
@@ -378,7 +391,7 @@ function love.keyreleased(key)
     tmpBlock.isTele = true
     tmpBlock.switchNum = editSwitch
     id = os.time()  -- oh dear TODO... its in sec.
-      id = love.math.random( id, id*1000 )--  this is so good
+      id = love.math.random( 0, 1000 ) * id--  this is so good
 
     print(id)
     blocks[id] = tmpBlock
@@ -397,7 +410,7 @@ function love.keyreleased(key)
     tmpBlock.isTeleBlock = true
     tmpBlock.switchNum = editSwitch
     id = os.time()  -- oh dear TODO... its in sec.
-      id = love.math.random( id, id*1000 )--  this is so good
+      id = love.math.random( 0, 1000 ) * id--  this is so good
 
     print(id)
     blocks[id] = tmpBlock
@@ -422,7 +435,7 @@ function love.mousereleased( x, y, button )
   tmpBlock.b = 5
   tmpBlock.isBlock = true
   id = os.time()  -- oh dear TODO... its in sec.
-  id = love.math.random( id, id*1000 )--  this is so good
+      id = love.math.random( 0, 1000 ) * id--  this is so good
   print(id)
   blocks[id] = tmpBlock
   constructBlock(tmpBlock, id)
@@ -447,7 +460,7 @@ function love.draw()
   --end
   --love.graphics.circle("fill", objects.ball.body:getX(), objects.ball.body:getY(), objects.ball.shape:getRadius())
   --love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY())
-  love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY(), math.rad(rotation), 1, 1, 40 / 2, 40 / 2)
+  love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY(), math.rad(rotation), 1, 1, 40 / 2, 22 / 2)
  
   
   --love.graphics.setColor(50, 50, 50)
