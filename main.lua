@@ -136,6 +136,9 @@ function clear()
 end
 
 function love.load()
+
+  editor = false -- DISABLE LEVEL EDITING
+
   love.physics.setMeter(64) --the height of a meter our worlds will be 64px
   world = love.physics.newWorld(0, 1.6*9.81*64, true) --create a world for the bodies to exist in with horizontal gravity of 0 and vertical gravity of 9.81
   world:setCallbacks(beginContact, endContact, preSolve, postSolve) -- collision callbacks
@@ -150,6 +153,9 @@ function love.load()
   musicPiece4:setLooping(true)
   --musicPiece1:setPitch(0.4)
   musicPiece1:play() -- change whatever... no plan TODO
+
+  stageTwo = -1 --bossfight
+  victory = false;
 
   prevX = 0
   prevY = 0
@@ -167,6 +173,7 @@ function love.load()
 
   teleVanish = false --should current teleporter pair vanish when used?
 
+
   -- teleporter colors
   teleColors = {}
   teleColors[1] = {}
@@ -182,9 +189,37 @@ function love.load()
   teleColors[3].g = 0
   teleColors[3].b = 255
 
+  teleColors[4] = {}
+  teleColors[4].r = 0
+  teleColors[4].g = 255
+  teleColors[4].b = 255
+  teleColors[5] = {}
+  teleColors[5].r = 255
+  teleColors[5].g = 0
+  teleColors[5].b = 255
+  teleColors[6] = {}
+  teleColors[6].r = 255
+  teleColors[6].g = 255
+  teleColors[6].b = 0
+  teleColors[7] = {}
+  teleColors[7].r = 0
+  teleColors[7].g = 100
+  teleColors[7].b = 255
+  teleColors[8] = {}
+  teleColors[8].r = 100
+  teleColors[8].g = 0
+  teleColors[8].b = 255
+  teleColors[9] = {}
+  teleColors[9].r = 255
+  teleColors[9].g = 0
+  teleColors[9].b = 100
+
   cameraY = 0
 
   picSmiley = love.graphics.newImage("salamander.png")
+  picDoor = love.graphics.newImage("Door.png")
+  picHell = love.graphics.newImage("Water.png")
+  picVictory = love.graphics.newImage("victory.png")
   rotation = 0
 
   editSwitch = 1
@@ -196,6 +231,11 @@ function love.load()
   switchStates[3] = true
   switchStates[2] = true
   switchStates[1] = true
+  -- second puzzle:
+  switchStates[4] = true
+  switchStates[5] = true
+  switchStates[8] = true
+  switchStates[9] = true
 
   objects = {} -- table to hold all our physical objects
   blocks = {} -- table for static blocks to load/save ONLY SKELETON DATA
@@ -206,6 +246,18 @@ function love.load()
   objects.ground.body = love.physics.newBody(world, 800/2, 800-50/2) --remember, the shape (the rectangle we create next) anchors to the body from its center, so we have to move it to (650/2, 650-50/2)
   objects.ground.shape = love.physics.newRectangleShape(200, 50) --make a rectangle with a width of 650 and a height of 50
   objects.ground.fixture = love.physics.newFixture(objects.ground.body, objects.ground.shape); --attach shape to body
+
+  --395 -2129.0673828125
+  -- DOOOOR 589, -1271.0727539062
+  -- SIZE: 57x94
+
+  -------------------------------------------------------
+  objects.goal = {}
+  objects.goal.body = love.physics.newBody(world, 395, -2140)
+  objects.goal.shape = love.physics.newRectangleShape(57, 94)
+  objects.goal.fixture = love.physics.newFixture(objects.goal.body, objects.goal.shape);
+  objects.goal.fixture:setUserData("goal")
+  -------------------------------------------------------
 
   -- TODO create walls on all four sides, topdown? nogravity but rest.?
   -- TODO how to determine collision/touching?
@@ -258,7 +310,7 @@ function love.load()
   --]]
 
   -- LOAD FROM theroomlevel.txt
-  -- blocks = require 'level' --TODO THIS WORKS NICE
+  blocks = require 'FINISHLEVEL' --TODO THIS WORKS NICE
   construct()
   updateTeleBlockMasks()
 
@@ -266,16 +318,52 @@ function love.load()
   love.graphics.setBackgroundColor(20, 5, 0) --set the background color to a nice blue
   love.window.setMode(800, 600) --set the window dimensions to 650 by 650
 end
- 
+
 function love.update(dt)
-  -- teleport?
+  
+  -- BOSSFIGHT?
+  if (objects.ball.body:getY() < -1270) and (stageTwo == -1) then
+    stageTwo = 0
+    musicPiece1:stop()
+    musicPiece2:stop()
+    musicPiece3:play()
+  end
+
+  if(stageTwo > -1) then
+
+    -- BOSSFIGHT WOOOO
+    stageTwo = stageTwo + dt*40
+
+    if objects.ball.body:getY() > -1270-stageTwo+115+100 then
+      print("Lose")
+      objects.ball.body:setPosition(589, -1235)
+      objects.ball.body:setLinearVelocity(0, -50)
+      stageTwo = 0
+      --musicPiece3:stop()
+      --musicPiece4:stop()
+      --musicPiece3:play()
+    end
+    --objects.ball.body:setPosition(589, -1235)
+    --objects.ball.body:setLinearVelocity(0, -50)
+
+    if(musicPiece3:isStopped()) then
+      musicPiece4:play()
+    end
+  elseif true then
+    if(musicPiece1:isStopped()) then
+      musicPiece2:play()
+    end
+  end
+
+
   if(delX ~= -1 and delY ~= -1) then
         deleteObjectsAt(delX,delY)
         delX = -1
         delY = -1 -- haha oh dear TODO
   end
 
-  if(teleTimeout == 0 and teleX > 0 and teleY > 0) then
+  -- teleport?
+  if(teleTimeout == 0 and teleX ~= -1 and teleY ~= -1) then
     objects.ball.body:setPosition(teleX, teleY-50)
     objects.ball.body:setLinearVelocity(0, -50)
     teleX = -1
@@ -294,9 +382,7 @@ function love.update(dt)
   teleTimeout = lume.clamp(teleTimeout-dt,0,10)
   --print(tostring(teleTimeout))
 
-  if(musicPiece1:isStopped()) then
-    musicPiece2:play()
-  end
+  
 
   world:update(dt) --this puts the world into motion
  
@@ -330,6 +416,7 @@ function love.update(dt)
     objects.ball.body:applyForce(0,400)
   end
 
+  if editor == true then
   if love.keyboard.isDown("g") then
     prevX = love.mouse:getX()
     prevY = love.mouse:getY()-cameraY
@@ -338,13 +425,17 @@ function love.update(dt)
   if love.keyboard.isDown("p") then
     clear()
   end
-
-  for i=1,9 do
+    for i=1,9 do
     if love.keyboard.isDown(tostring(i)) then
       print(tostring(i))
       editSwitch = i
     end
   end
+  end
+
+
+
+
 
 
   
@@ -354,8 +445,7 @@ end
 
 function love.keyreleased(key)
 
-
-  -- load/save BLOCKS
+  if editor == true then
   if key == "o" then
     str = serialize(blocks)
     print(str)
@@ -369,12 +459,7 @@ function love.keyreleased(key)
     construct() -- DONT LOAD REPEATEDLY, CLEAR FIRST -> GOOD THINK IT WORKS?
     updateTeleBlockMasks()
   end
-
-  if key == "c" then
-    objects.ball.body:setPosition(400, 800/2+250)
-    objects.ball.body:setLinearVelocity(0, -50)
-  end
-  if key == "r" then
+    if key == "r" then
     delX = love.mouse:getX()
     delY = love.mouse:getY()-cameraY
   end
@@ -421,10 +506,24 @@ function love.keyreleased(key)
     print("TELEVANISH:")
     print(teleVanish)
   end
+    if key == "b" then
+    objects.ball.body:setPosition(589, -1235)
+    objects.ball.body:setLinearVelocity(0, -50)
+  end
+  end
+  -- load/save BLOCKS
+
+  if key == "c" then
+    objects.ball.body:setPosition(400, 800/2+250)
+    objects.ball.body:setLinearVelocity(0, -50)
+  end
+
+
 end
  
 function love.mousereleased( x, y, button )
   -- create block set with starting point at g
+  if editor == true then
   tmpBlock = {}
   tmpBlock.x = math.min(x,prevX)+(math.abs(x-prevX)/2)
   tmpBlock.y = math.min(-cameraY+y,prevY)+(math.abs(-cameraY+y-prevY)/2)
@@ -439,6 +538,8 @@ function love.mousereleased( x, y, button )
   print(id)
   blocks[id] = tmpBlock
   constructBlock(tmpBlock, id)
+  end
+
 end
 
 function love.draw()
@@ -462,7 +563,8 @@ function love.draw()
   --love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY())
   love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY(), math.rad(rotation), 1, 1, 40 / 2, 22 / 2)
  
-  
+  love.graphics.draw(picDoor, objects.goal.body:getX(), objects.goal.body:getY()-50, math.rad(rotation), 1, 1, 40 / 2, 22 / 2)
+
   --love.graphics.setColor(50, 50, 50)
   --love.graphics.polygon("fill", objects.ball.footFixture.body:getWorldPoints(objects.ball.footFixture.shape:getPoints()))
 
@@ -490,10 +592,25 @@ function love.draw()
   --love.graphics.setColor(50, 50, 50) -- set the drawing color to grey for the blocks
   --love.graphics.polygon("fill", objects.block1.body:getWorldPoints(objects.block1.shape:getPoints()))
   --love.graphics.polygon("fill", objects.block2.body:getWorldPoints(objects.block2.shape:getPoints()))
+
+  -- BossFight Weee
+  if(stageTwo > -1) then
+    love.graphics.draw(picHell, 0, -1270-stageTwo+100, 0, 1, 1, 0, 0)
+  end
+  --victory = true
+  if(victory) then
+    --love.graphics.setBackgroundColor(255, 255, 255)
+    love.graphics.draw(picVictory, 0, objects.ball.body:getY()-400, 0, 1, 1, 0, 0)
+  end
 end
 
 function beginContact(a, b, coll)
   -- analyze if can jump again TODO
+  if a:getUserData() == "goal" or b:getUserData() == "goal" then
+    print("WOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+    victory = true;
+  end 
+
   if a:getUserData() == "foot" or b:getUserData() == "foot" then
     print("begin")
     footCount = footCount+1
