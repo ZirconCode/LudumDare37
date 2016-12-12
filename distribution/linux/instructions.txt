@@ -1,0 +1,6 @@
+Please download the current Love2D packages at:
+https://www.love2d.org/
+
+And then open LD37Salamander.love
+
+<3
