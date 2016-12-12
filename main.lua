@@ -147,6 +147,11 @@ function love.load()
   musicPiece2 = love.audio.newSource("LudumDare37Kitschig2Loop.ogg")
   musicPiece3 = love.audio.newSource("LudumDare37Dark1.ogg")
   musicPiece4 = love.audio.newSource("LudumDare37Dark2Loop.ogg")
+  
+  voice1 = love.audio.newSource("LudumDare37terriblesnobbyenglishdude.ogg")
+  voice1:setLooping(false)
+  voice2 = love.audio.newSource("LudumDare37evenworseDrown.ogg")
+  voice2:setLooping(false)
   musicPiece1:setLooping(false)
   musicPiece2:setLooping(true)
   musicPiece3:setLooping(false)
@@ -167,6 +172,8 @@ function love.load()
   teleCurrent = 1
   teleX = -1
   teleY = -1
+
+  teleGlow = 0
 
   delX = -1
   delY = -1
@@ -309,6 +316,8 @@ function love.load()
   blocks.block2.isBlock = true
   --]]
 
+  voice1:play()
+
   -- LOAD FROM theroomlevel.txt
   blocks = require 'FINISHLEVEL' --TODO THIS WORKS NICE
   construct()
@@ -321,12 +330,19 @@ end
 
 function love.update(dt)
   
+  teleGlow = teleGlow+dt*40
+  teleGlow = lume.round(lume.clamp(teleGlow,0,75))
+  if teleGlow == 75 then
+    teleGlow = 0
+  end
+
   -- BOSSFIGHT?
   if (objects.ball.body:getY() < -1270) and (stageTwo == -1) then
     stageTwo = 0
     musicPiece1:stop()
     musicPiece2:stop()
     musicPiece3:play()
+    voice2:play()
   end
 
   if(stageTwo > -1) then
@@ -561,8 +577,13 @@ function love.draw()
   --end
   --love.graphics.circle("fill", objects.ball.body:getX(), objects.ball.body:getY(), objects.ball.shape:getRadius())
   --love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY())
+  love.graphics.setColor(255, 255, 255, 255)
+  if(teleTimeout > 0) then
+      love.graphics.setColor(255, 255, 255, 100)
+  end
   love.graphics.draw(picSmiley, objects.ball.body:getX(), objects.ball.body:getY(), math.rad(rotation), 1, 1, 40 / 2, 22 / 2)
  
+  love.graphics.setColor(255, 255, 255, 255)
   love.graphics.draw(picDoor, objects.goal.body:getX(), objects.goal.body:getY()-50, math.rad(rotation), 1, 1, 40 / 2, 22 / 2)
 
   --love.graphics.setColor(50, 50, 50)
@@ -575,7 +596,10 @@ function love.draw()
       love.graphics.polygon("fill", value.body:getWorldPoints(value.shape:getPoints()))
     end
     if value.isTele == true then
-      love.graphics.setColor(value.r, value.g, value.b)
+      r = lume.clamp(value.r+teleGlow,0,255)
+      g = lume.clamp(value.g+teleGlow,0,255)
+      b = lume.clamp(value.b+teleGlow,0,255)
+      love.graphics.setColor(r, g, b)
       love.graphics.polygon("fill", value.body:getWorldPoints(value.shape:getPoints()))
     end
     if value.isTeleBlock == true then
@@ -595,11 +619,13 @@ function love.draw()
 
   -- BossFight Weee
   if(stageTwo > -1) then
+    love.graphics.setColor(255, 255, 255, 255)
     love.graphics.draw(picHell, 0, -1270-stageTwo+100, 0, 1, 1, 0, 0)
   end
   --victory = true
   if(victory) then
     --love.graphics.setBackgroundColor(255, 255, 255)
+    love.graphics.setColor(255, 255, 255, 255)
     love.graphics.draw(picVictory, 0, objects.ball.body:getY()-400, 0, 1, 1, 0, 0)
   end
 end
